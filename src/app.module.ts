@@ -34,6 +34,7 @@ import { UserPreferenceModule } from './user-preference/user-preference.module';
         database: configService.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
         synchronize: configService.get('NODE_ENV') !== 'production',
+        ssl: { rejectUnauthorized: false },
       }),
       inject: [ConfigService],
     }),
