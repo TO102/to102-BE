@@ -1,4 +1,4 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
+import { ApiProperty, PartialType, PickType } from '@nestjs/swagger';
 
 export class UserPreference {
   @ApiProperty({ example: 1, description: '사용자 설정 고유 식별자' })
@@ -34,25 +34,12 @@ export class UserPreferenceResponseDto extends PickType(UserPreference, [
   'additionalSettings',
 ] as const) {}
 
-export class UpdateUserPreferenceDto extends PickType(UserPreference, [
-  'notificationsEnabled',
-  'notificationTypes',
-  'theme',
-  'language',
-  'additionalSettings',
-] as const) {
-  @ApiProperty({ required: false })
-  notificationsEnabled?: boolean;
-
-  @ApiProperty({ required: false })
-  notificationTypes?: string[];
-
-  @ApiProperty({ required: false })
-  theme?: 'light' | 'dark';
-
-  @ApiProperty({ required: false })
-  language?: string;
-
-  @ApiProperty({ required: false })
-  additionalSettings?: Record<string, any>;
-}
+export class UpdateUserPreferenceDto extends PartialType(
+  PickType(UserPreference, [
+    'notificationsEnabled',
+    'notificationTypes',
+    'theme',
+    'language',
+    'additionalSettings',
+  ]),
+) {}
