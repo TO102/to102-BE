@@ -33,7 +33,8 @@ import { UserPreferenceModule } from './user-preference/user-preference.module';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_DATABASE'),
         entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        // 깃허브 액션 테스트 중입니다.
+        synchronize: false, // configService.get('NODE_ENV') !== 'production',
         ssl: { rejectUnauthorized: false },
       }),
       inject: [ConfigService],
