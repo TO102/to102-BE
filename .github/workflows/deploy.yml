@@ -13,7 +13,7 @@ jobs:
     - name: Use Node.js
       uses: actions/setup-node@v2
       with:
-        node-version: '16'  # 프로젝트에서 사용하는 Node.js 버전에 맞게 수정하세요
+        node-version: '20'  # 프로젝트에서 사용하는 Node.js 버전에 맞게 수정하세요
 
     - name: Install dependencies
       run: npm ci
@@ -27,15 +27,23 @@ jobs:
         HOST: ${{ secrets.EC2_HOST }}
         USER: ${{ secrets.EC2_USER }}
       run: |
-        echo "$PRIVATE_KEY" > private_key && chmod 600 private_key
-        scp -v -o StrictHostKeyChecking=no -i private_key -r dist package.json package-lock.json ${USER}@${HOST}:~/to102-BE/
-        ssh -v -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
-          set -x
+        echo "$PRIVATE_KEY" > private_key
+        chmod 600 private_key
+        scp -i private_key -r dist package*.json ${USER}@${HOST}:~/to102-BE/
+        ssh -i private_key ${USER}@${HOST} '
           cd ~/to102-BE
-          if [ ! -d "node_modules" ]; then
-            npm ci --only=production
+          git fetch origin main
+          git reset --hard origin/main
+          npm ci --only=production
+          npm run build
+          if [ ! -f ".env" ]; then
+            echo "Creating default .env file"
+            echo "PORT=3000" > .env
           fi
-          npm install pm2 -g
+          if ! command -v pm2 &> /dev/null; then
+            echo "Installing pm2"
+            npm install -g pm2
+          fi
           pm2 describe to102-BE > /dev/null
           if [ $? -eq 0 ]; then
             pm2 restart to102-BE
@@ -47,10 +55,16 @@ jobs:
 
     - name: Verify Deployment
       env:
+        PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
         HOST: ${{ secrets.EC2_HOST }}
         USER: ${{ secrets.EC2_USER }}
       run: |
-        ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} '
+        ssh -i private_key ${USER}@${HOST} '
+          cd ~/to102-BE
+          echo "Current commit hash:"
+          git rev-parse HEAD
+          echo "PM2 process list:"
           pm2 list
-          curl -f http://localhost:3000 || echo "Application is not responding on port 3000"
+          echo "Checking application status:"
+          curl -sSf http://localhost:3000 || echo "Application is not responding on port 3000"
         '
