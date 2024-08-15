@@ -31,56 +31,44 @@ jobs:
 
       - name: Debug Information
         run: |
-          echo "HOST value: ${{ secrets.EC2_HOST }}"
-          echo "USER value: ${{ secrets.EC2_USER }}"
-        env:
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
+          echo "Debugging connection to EC2"
+          echo "EC2_HOST: ${{ secrets.EC2_HOST }}"
+          echo "EC2_USER: ${{ secrets.EC2_USER }}"
 
       - name: Test Network Connection
         run: |
           ping -c 4 ${{ secrets.EC2_HOST }}
 
       - name: Debug SSH Connection
-        env:
-          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
         run: |
-          echo "$PRIVATE_KEY" > private_key
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
-          ssh -v -o StrictHostKeyChecking=no -o ServerAliveInterval=60 -i private_key $USER@$HOST 'echo "SSH connection successful"'
+          ssh -v -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'echo "SSH connection successful"'
 
       - name: Deploy to EC2
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 10
-          max_attempts: 3
-          command: |
-            echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
-            chmod 600 private_key
-            mkdir -p ~/.ssh
-            ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts
-            rsync -avz -e "ssh -i private_key" --delete dist package*.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/to102-BE/
-            ssh -o ServerAliveInterval=60 -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
-              cd ~/to102-BE
-              npm ci --omit=dev
-              if [ ! -f ".env" ]; then
-                echo "PORT=3000" > .env
-              fi
-              npx pm2 describe to102-BE > /dev/null || npx pm2 start npm --name "to102-BE" -- run start:prod
-              npx pm2 reload to102-BE --update-env
-              npx pm2 save
-            '
+        run: |
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
+          scp -i private_key -r dist package*.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/to102-BE/
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
+            cd ~/to102-BE
+            npm ci --only=production
+            pm2 restart to102-BE || pm2 start npm --name "to102-BE" -- run start:prod
+            pm2 save
+          '
 
       - name: Verify Deployment
-        env:
-          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-          HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.EC2_USER }}
         run: |
-          ssh -o ServerAliveInterval=60 -i private_key $USER@$HOST '
+          ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
             cd ~/to102-BE
-            npx pm2 list
+            echo "Current directory: $(pwd)"
+            echo "Files in directory:"
+            ls -la
+            echo "PM2 processes:"
+            pm2 list
+            echo "Application response:"
             curl -sSf http://localhost:3000 || echo "Application is not responding on port 3000"
           '
+
+      - name: Clean up
+        run: rm -f private_key
