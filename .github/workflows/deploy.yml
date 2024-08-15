@@ -29,6 +29,8 @@ jobs:
       run: |
         echo "$PRIVATE_KEY" > private_key
         chmod 600 private_key
+        mkdir -p ~/.ssh
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
         scp -i private_key -r dist package*.json ${USER}@${HOST}:~/to102-BE/
         ssh -i private_key ${USER}@${HOST} '
           cd ~/to102-BE
