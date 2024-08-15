@@ -46,9 +46,9 @@ jobs:
           echo "Test File" > testfile.txt
           scp -vvv -i private_key testfile.txt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/testfile.txt
 
-      - name: Test Network Connection
-        run: |
-          telnet ${{ secrets.EC2_HOST }} 22
+      # - name: Test Network Connection
+      #   run: |
+      #     telnet ${{ secrets.EC2_HOST }} 22
 
       - name: Deploy to EC2
         run: |
