@@ -34,16 +34,21 @@ jobs:
           echo "Debugging connection to EC2"
           echo "EC2_HOST: ${{ secrets.EC2_HOST }}"
           echo "EC2_USER: ${{ secrets.EC2_USER }}"
-
-      - name: Test Network Connection
-        run: |
-          telnet ${{ secrets.EC2_HOST }} 22
-
       - name: Debug SSH Connection
         run: |
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
           ssh -vvv -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'echo "SSH connection successful"'
+      - name: SCP 파일 전송 테스트
+        run: |
+          echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
+          chmod 600 private_key
+          echo "Test File" > testfile.txt
+          scp -vvv -i private_key testfile.txt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/testfile.txt
+
+      - name: Test Network Connection
+        run: |
+          telnet ${{ secrets.EC2_HOST }} 22
 
       - name: Deploy to EC2
         run: |
