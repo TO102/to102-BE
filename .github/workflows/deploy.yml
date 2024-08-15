@@ -8,14 +8,18 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # 저장소의 최신 커밋을 가져옵니다.
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # 모든 커밋을 가져옵니다.
+
+      # Node.js 설정
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
 
+      # 의존성 캐싱
       - name: Cache dependencies
         uses: actions/cache@v2
         with:
@@ -24,45 +28,42 @@ jobs:
           restore-keys: |
             ${{ runner.OS }}-node-
 
+      # 의존성 설치
       - name: Install dependencies
         run: npm ci
 
+      # 빌드
       - name: Build
         run: npm run build
 
+      # 디버깅 정보 출력
       - name: Debug Information
         run: |
           echo "Debugging connection to EC2"
           echo "EC2_HOST: ${{ secrets.EC2_HOST }}"
           echo "EC2_USER: ${{ secrets.EC2_USER }}"
+
+      # SSH 연결 디버깅
       - name: Debug SSH Connection
         run: |
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
           ssh -vvv -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} 'echo "SSH connection successful"'
-      - name: SCP 파일 전송 테스트
-        run: |
-          echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
-          chmod 600 private_key
-          echo "Test File" > testfile.txt
-          scp -vvv -i private_key testfile.txt ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/testfile.txt
 
-      # - name: Test Network Connection
-      #   run: |
-      #     telnet ${{ secrets.EC2_HOST }} 22
-
+      # 배포 전에 최신 커밋을 원격 서버로 가져옵니다.
       - name: Deploy to EC2
         run: |
           echo "${{ secrets.EC2_PRIVATE_KEY }}" > private_key
           chmod 600 private_key
-          scp -i private_key -r dist package*.json ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:~/to102-BE/
           ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
-            cd ~/to102-BE
-            npm ci --only=production
-            pm2 restart to102-BE || pm2 start npm --name "to102-BE" -- run start:prod
+            cd ~/to102-BE &&
+            git pull origin main &&  # 최신 커밋을 가져옵니다.
+            npm ci --only=production &&
+            pm2 restart to102-BE || pm2 start npm --name "to102-BE" -- run start:prod &&
             pm2 save
           '
 
+      # 배포 확인
       - name: Verify Deployment
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} '
@@ -76,5 +77,6 @@ jobs:
             curl -sSf http://localhost:3000 || echo "Application is not responding on port 3000"
           '
 
+      # 임시 파일 정리
       - name: Clean up
         run: rm -f private_key
