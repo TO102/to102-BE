@@ -37,7 +37,7 @@ jobs:
 
       - name: Test Network Connection
         run: |
-          ping -c 4 ${{ secrets.EC2_HOST }}
+          telnet ${{ secrets.EC2_HOST }} 22
 
       - name: Debug SSH Connection
         run: |
