@@ -2,71 +2,68 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Use Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-    - name: Install dependencies
-      run: npm ci
+      - name: Install dependencies
+        run: npm ci
 
-    - name: Build
-      run: npm run build
+      - name: Build
+        run: npm run build
 
-    - name: Deploy to EC2
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
-      run: |
-        echo "$PRIVATE_KEY" > private_key
-        chmod 600 private_key
-        mkdir -p ~/.ssh
-        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
-        scp -i private_key -r dist package*.json ${USER}@${HOST}:~/to102-BE/
-        ssh -i private_key ${USER}@${HOST} '
-          cd ~/to102-BE
-          git fetch origin main
-          git reset --hard origin/main
-          npm ci --only=production
-          npm run build
-          if [ ! -f ".env" ]; then
-            echo "Creating default .env file"
-            echo "PORT=3000" > .env
-          fi
-          if ! command -v pm2 &> /dev/null; then
-            echo "Installing pm2"
-            npm install -g pm2
-          fi
-          pm2 describe to102-BE > /dev/null
-          if [ $? -eq 0 ]; then
-            pm2 restart to102-BE
-          else
-            pm2 start npm --name "to102-BE" -- start
-          fi
-          pm2 save
-        '
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
+          mkdir -p ~/.ssh
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+          scp -i private_key -r dist package*.json ${USER}@${HOST}:~/to102-BE/
+          ssh -i private_key ${USER}@${HOST} '
+            cd ~/to102-BE
+            npm ci --only=production
+            if [ ! -f ".env" ]; then
+              echo "Creating default .env file"
+              echo "PORT=3000" > .env
+            fi
+            if ! command -v pm2 &> /dev/null; then
+              echo "Installing pm2"
+              npm install -g pm2
+            fi
+            pm2 describe to102-BE > /dev/null
+            if [ $? -eq 0 ]; then
+              pm2 restart to102-BE
+            else
+              pm2 start npm --name "to102-BE" -- run start:prod
+            fi
+            pm2 save
+          '
 
-    - name: Verify Deployment
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
-        HOST: ${{ secrets.EC2_HOST }}
-        USER: ${{ secrets.EC2_USER }}
-      run: |
-        ssh -i private_key ${USER}@${HOST} '
-          cd ~/to102-BE
-          echo "Current commit hash:"
-          git rev-parse HEAD
-          echo "PM2 process list:"
-          pm2 list
-          echo "Checking application status:"
-          curl -sSf http://localhost:3000 || echo "Application is not responding on port 3000"
-        '
+      - name: Verify Deployment
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ${{ secrets.EC2_USER }}
+        run: |
+          ssh -i private_key ${USER}@${HOST} '
+            cd ~/to102-BE
+            echo "Current commit hash:"
+            git rev-parse HEAD
+            echo "PM2 process list:"
+            pm2 list
+            echo "Checking application status:"
+            curl -sSf http://localhost:3000 || echo "Application is not responding on port 3000"
+          '
