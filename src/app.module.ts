@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { WinstonModule } from 'nest-winston';
@@ -15,6 +15,7 @@ import { LocationModule } from './location/location.module';
 import { TagModule } from './tag/tag.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { UserPreferenceModule } from './user-preference/user-preference.module';
+import { dataSourceOptions } from './data-source';
 
 @Module({
   imports: [
@@ -23,22 +24,7 @@ import { UserPreferenceModule } from './user-preference/user-preference.module';
       envFilePath: '.env',
     }),
     WinstonModule.forRoot(winstonConfig),
-    TypeOrmModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        type: 'postgres',
-        host: configService.get('DB_HOST'),
-        port: +configService.get<number>('DB_PORT'),
-        username: configService.get('DB_USERNAME'),
-        password: configService.get('DB_PASSWORD'),
-        database: configService.get('DB_DATABASE'),
-        entities: [__dirname + '/**/*.entity{.ts,.js}'],
-        // 깃허브 액션 테스트 중입니다.
-        synchronize: false, // configService.get('NODE_ENV') !== 'production',
-        ssl: { rejectUnauthorized: false },
-      }),
-      inject: [ConfigService],
-    }),
+    TypeOrmModule.forRoot(dataSourceOptions),
     UserModule,
     PostModule,
     ChatModule,

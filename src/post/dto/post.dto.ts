@@ -44,8 +44,9 @@ export class UpdatePostDto extends PickType(Post, [
 
 export class PostResponseDto extends Post {}
 
-export class PopularPostDto extends PickType(Post, [
-  'id',
-  'title',
-  'viewCount',
-] as const) {}
+export class LatestPostDto extends PickType(Post, ['id', 'title'] as const) {
+  id: number;
+  author: { id: number; name: string };
+  tags: { id: number; name: string }[];
+  location: { id: number; city: string; district: string };
+}

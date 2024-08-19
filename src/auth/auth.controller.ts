@@ -1,81 +1,104 @@
 import {
   Controller,
-  Post,
-  Body,
-  Delete,
   Get,
+  Post,
+  UseGuards,
+  Req,
+  Res,
   HttpCode,
-  HttpStatus,
+  UnauthorizedException,
+  Query,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
-import { KakaoLoginDto, RegisterDto, UserResponseDto } from './dto/auth.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { ConfigService } from '@nestjs/config';
+import { AuthService } from './auth.service';
+import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
 
 @ApiTags('인증')
 @Controller('auth')
 export class AuthController {
-  @Post('kakao')
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigService,
+  ) {}
+
+  @Get('kakao')
+  @UseGuards(AuthGuard('kakao'))
   @ApiOperation({
     summary: '카카오 OAuth 로그인',
-    description: '카카오 액세스 토큰을 사용하여 로그인합니다.',
+    description: '카카오 로그인을 처리합니다.',
   })
-  @ApiBody({ type: KakaoLoginDto })
-  @ApiResponse({
-    status: 200,
-    description: '로그인 성공',
-    type: UserResponseDto,
+  @ApiResponse({ status: 301, description: '로그인 성공 및 리다이렉트' })
+  @HttpCode(301)
+  async kakaoLogin(@Req() req, @Res() res) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { user, accessToken, refreshToken } =
+      await this.authService.kakaoLogin(req.user);
+    res.cookie('accessToken', accessToken, { httpOnly: true });
+    res.cookie('refreshToken', refreshToken, { httpOnly: true });
+    res.cookie('isLoggedIn', true, { httpOnly: false });
+    return res.redirect(this.configService.get('CLIENT_URL'));
+  }
+
+  @Get('refresh')
+  @ApiOperation({
+    summary: '토큰 갱신',
+    description: 'Refresh 토큰을 사용하여 새 Access 토큰을 발급합니다.',
   })
-  kakaoLogin(@Body() kakaoLoginDto: KakaoLoginDto) {
-    // 구현 내용
+  @ApiResponse({ status: 200, description: '토큰 갱신 성공' })
+  @HttpCode(200)
+  async refresh(@Req() req, @Res() res) {
+    try {
+      const newAccessToken = await this.authService.refresh(
+        req.cookies.refreshToken,
+      );
+      res.cookie('accessToken', newAccessToken, { httpOnly: true });
+      return res.send({ message: 'Access token refreshed successfully' });
+    } catch (err) {
+      res.clearCookie('accessToken');
+      res.clearCookie('refreshToken');
+      res.clearCookie('isLoggedIn');
+      throw new UnauthorizedException('Invalid refresh token');
+    }
   }
 
   @Post('logout')
   @ApiOperation({
     summary: '로그아웃',
-    description: '현재 사용자를 로그아웃 처리합니다.',
+    description: '사용자를 로그아웃 처리합니다.',
   })
   @ApiResponse({ status: 200, description: '로그아웃 성공' })
-  @HttpCode(HttpStatus.OK)
-  logout() {
-    // 구현 내용
+  @HttpCode(200)
+  logout(@Res() res) {
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
+    res.clearCookie('isLoggedIn');
+    return res.send({ message: 'Logged out successfully' });
   }
 
-  @Post('register')
+  @Get('kakao/callback')
   @ApiOperation({
-    summary: '회원가입',
-    description: '새로운 사용자를 등록합니다.',
+    summary: '카카오 OAuth 콜백',
+    description: '카카오 로그인 후 콜백을 처리합니다.',
   })
-  @ApiBody({ type: RegisterDto })
-  @ApiResponse({
-    status: 201,
-    description: '회원가입 성공',
-    type: UserResponseDto,
-  })
-  register(@Body() registerDto: RegisterDto) {
-    // 구현 내용
-  }
-
-  @Delete('deactivate')
-  @ApiOperation({
-    summary: '회원 탈퇴',
-    description:
-      '현재 사용자 계정을 비활성화합니다. 30일 후 재가입 가능합니다.',
-  })
-  @ApiResponse({ status: 200, description: '계정 비활성화 성공' })
-  deactivate() {
-    // 구현 내용
-  }
-
-  @Get('me')
-  @ApiOperation({
-    summary: '현재 사용자 정보 조회',
-    description: '인증된 현재 사용자의 정보를 조회합니다.',
-  })
-  @ApiResponse({
-    status: 200,
-    description: '사용자 정보 조회 성공',
-    type: UserResponseDto,
-  })
-  getMe() {
-    // 구현 내용
+  @ApiResponse({ status: 200, description: '카카오 인증 성공' })
+  async kakaoCallback(@Query('code') code: string, @Res() res: Response) {
+    try {
+      const { user, accessToken, refreshToken } =
+        await this.authService.kakaoLogin(code);
+      res.cookie('accessToken', accessToken, { httpOnly: true });
+      res.cookie('refreshToken', refreshToken, { httpOnly: true });
+      res.cookie('isLoggedIn', true, { httpOnly: false });
+      return res.json({
+        message: '카카오 인증이 성공적으로 완료되었습니다.',
+        user: { id: user.userId, email: user.email },
+      });
+    } catch (error) {
+      console.error(error);
+      return res
+        .status(401)
+        .json({ message: '카카오 인증 처리 중 오류가 발생했습니다.' });
+    }
   }
 }

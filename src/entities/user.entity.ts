@@ -3,19 +3,20 @@ import {
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
 import { UserLocation } from './user-location.entity';
 
-@Entity()
+@Entity('user')
 export class User {
-  @PrimaryGeneratedColumn()
-  user_id: number;
+  @PrimaryGeneratedColumn({ name: 'user_id' })
+  userId: number;
 
   @OneToMany(() => UserLocation, (userLocation) => userLocation.user)
   userLocations: UserLocation[];
 
-  @Column()
+  @Column({ nullable: true })
   username: string;
 
   @Column()
@@ -24,27 +25,42 @@ export class User {
   @Column()
   email: string;
 
-  @Column()
-  oauth_provider: string;
+  @Column({ name: 'oauth_provider' })
+  oauthProvider: string;
 
-  @Column()
-  oauth_id: string;
+  @Column({ name: 'oauth_id', unique: true })
+  oauthId: string;
 
-  @Column()
-  profile_picture_url: string;
+  @Column({ name: 'profile_picture_url' })
+  profilePictureUrl: string;
 
-  @CreateDateColumn()
-  created_at: Date;
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
 
-  @Column()
-  last_login: Date;
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
 
-  @Column()
-  is_active: boolean;
+  @Column({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+    name: 'last_login',
+  })
+  lastLogin: Date;
 
-  @Column({ nullable: true })
-  deactivated_at: Date;
+  @Column({ default: true, name: 'is_active' })
+  isActive: boolean;
 
-  @Column('decimal', { precision: 3, scale: 2, default: 0 })
-  average_rating: number;
+  @Column({ nullable: true, name: 'deactivated_at' })
+  deactivatedAt: Date;
+
+  @Column('decimal', {
+    precision: 3,
+    scale: 2,
+    default: 0,
+    name: 'average_rating',
+  })
+  averageRating: number;
+
+  @Column({ nullable: true, name: 'current_refresh_token' })
+  currentRefreshToken: string;
 }

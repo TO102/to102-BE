@@ -19,12 +19,15 @@ import {
   CreatePostDto,
   UpdatePostDto,
   PostResponseDto,
-  PopularPostDto,
+  LatestPostDto,
 } from './dto/post.dto';
+import { PostService } from './post.service';
 
 @ApiTags('게시글')
 @Controller('posts')
 export class PostController {
+  constructor(private readonly postService: PostService) {}
+
   @Post()
   @ApiOperation({
     summary: '새 게시글 작성',
@@ -60,19 +63,19 @@ export class PostController {
     return [];
   }
 
-  @Get('popular')
+  @Get('latest')
   @ApiOperation({
-    summary: '인기 게시글 조회',
-    description: '인기 있는 게시글을 조회합니다.',
+    summary: '최신 게시글 조회',
+    description: '가장 최신의 게시글을 10개를 조회합니다.',
   })
   @ApiResponse({
     status: 200,
-    description: '인기 게시글 목록',
-    type: [PopularPostDto],
+    description: '최신 게시글 목록',
+    type: [LatestPostDto],
   })
-  getPopularPosts(): PopularPostDto[] {
+  getLatestPosts(): Promise<LatestPostDto[]> {
     // 구현 내용
-    return [];
+    return this.postService.getLatestPosts();
   }
 
   @Get(':id')
