@@ -6,7 +6,11 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { AddressInfo, LocationResponseDto } from './dto/location.dto';
+import {
+  AddressInfo,
+  LocationResponseDto,
+  ProvinceCitiesResponseDto,
+} from './dto/location.dto';
 import { LocationService } from './location.service';
 
 @ApiTags('위치')
@@ -56,5 +60,27 @@ export class LocationController {
   })
   getLocationById(@Param('id') id: number): Promise<LocationResponseDto> {
     return this.locationService.getLocationById(id);
+  }
+
+  @Get('province/:province')
+  @ApiOperation({
+    summary: '광역시/특별시/도 정보 조회',
+    description:
+      '광역시/특별시/도 정보를 파라미터로 받아 시/군/구 정보를 조회합니다.',
+  })
+  @ApiParam({
+    name: 'province',
+    description: '광역시/특별시/도',
+    example: '서울특별시',
+  })
+  @ApiResponse({
+    status: 200,
+    description: '시/군/구 정보',
+    type: ProvinceCitiesResponseDto,
+  })
+  async getCitiesByProvince(
+    @Param('province') province: string,
+  ): Promise<ProvinceCitiesResponseDto> {
+    return this.locationService.getCitiesByProvince(province);
   }
 }

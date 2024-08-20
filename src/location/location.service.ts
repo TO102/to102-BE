@@ -5,7 +5,11 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AddressInfo, LocationResponseDto } from './dto/location.dto';
+import {
+  AddressInfo,
+  LocationResponseDto,
+  ProvinceCitiesResponseDto,
+} from './dto/location.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location } from '../entities/location.entity';
@@ -73,5 +77,28 @@ export class LocationService {
         'Failed to fetch address information',
       );
     }
+  }
+  async getCitiesByProvince(
+    province: string,
+  ): Promise<ProvinceCitiesResponseDto> {
+    const locations = await this.locationRepository
+      .createQueryBuilder('location')
+      .select('DISTINCT location.city', 'city')
+      .where('location.province = :province', { province })
+      .orderBy('location.city', 'ASC')
+      .getRawMany();
+
+    if (!locations || locations.length === 0) {
+      throw new NotFoundException(
+        `No cities found for the province: ${province}`,
+      );
+    }
+
+    const cities = locations.map((location) => location.city);
+
+    return {
+      province,
+      cities,
+    };
   }
 }
