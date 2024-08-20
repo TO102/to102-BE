@@ -14,6 +14,10 @@ export interface KakaoUser {
 
 export interface RequestWithKakaoUser extends Request {
   user: KakaoUser;
+  cookies: {
+    [key: string]: string;
+  };
+
 }
 
 export interface LoginResult {
