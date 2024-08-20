@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +10,7 @@ import { KakaoUser, LoginResult } from './auth.types';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   constructor(
     private configService: ConfigService,
     private jwtService: JwtService,
@@ -58,19 +59,14 @@ export class AuthService {
   }
 
   async kakaoLogin(kakaoUser: KakaoUser): Promise<LoginResult> {
+    this.logger.debug(`kakaoUser : ${JSON.stringify(kakaoUser)}`);
     try {
       const { id, kakao_account } = kakaoUser;
-      //console.log('Starting kakaoLogin with code:', code);
-
-      // const kakaoToken = await this.getKakaoToken(code);
-      // console.log('Received Kakao token:', kakaoToken);
-
-      // const kakaoUserData = await this.getKakaoUserInfo(kakaoToken);
-      // console.log('Received Kakao user data:', kakaoUserData);
-
+      this.logger.debug(`kakaoID : ${id}`);
+      this.logger.debug(`kakaoAccount : ${JSON.stringify(kakao_account)}`);
       const user = await this.usersRepository.findOrCreateByOAuthId(
         'kakao',
-        id,
+        id.toString(),
         {
           nickname: kakao_account?.profile?.nickname,
           email: kakao_account?.email,

@@ -62,6 +62,8 @@ export class AuthController {
 
     try {
       const newAccessToken = await this.authService.refresh(refreshToken);
+      //this.logger.debug(`old access token : ${req.cookies?.accessToken}, new Access token : ${newAccessToken}`,);
+      res.clearCookie('accessToken');
       res.cookie('accessToken', newAccessToken, { httpOnly: true });
       return res.send({ message: 'Access token refreshed successfully' });
     } catch (err) {

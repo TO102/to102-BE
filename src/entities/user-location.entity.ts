@@ -8,10 +8,10 @@ import {
 import { User } from './user.entity';
 import { Location } from './location.entity';
 
-@Entity()
+@Entity('user_location')
 export class UserLocation {
-  @PrimaryGeneratedColumn()
-  user_location_id: number;
+  @PrimaryGeneratedColumn({ name: 'user_location_id' })
+  userLocationId: number;
 
   @ManyToOne(() => User, (user) => user.userLocations)
   @JoinColumn({ name: 'user_id' })
@@ -21,9 +21,9 @@ export class UserLocation {
   @JoinColumn({ name: 'location_id' })
   location: Location;
 
-  @Column()
-  is_verified: boolean;
+  @Column({ name: 'is_verified' })
+  isVerified: boolean;
 
-  @Column()
-  verified_at: Date;
+  @Column({ name: 'verified_at' })
+  verifiedAt: Date;
 }

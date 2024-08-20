@@ -1,28 +1,35 @@
-import { ApiProperty, PickType, OmitType } from '@nestjs/swagger';
+import { ApiProperty, PickType, IntersectionType } from '@nestjs/swagger';
 
-export class Location {
-  @ApiProperty({ example: 1, description: '위치 고유 식별자' })
-  id: number;
+export class AddressInfo {
+  @ApiProperty({ example: '서울특별시', description: '시/도 이름' })
+  province: string;
 
-  @ApiProperty({ example: '서울', description: '도시 이름' })
+  @ApiProperty({ example: '강남구', description: '시/군/구 이름' })
   city: string;
 
-  @ApiProperty({ example: '강남구', description: '구 이름' })
+  @ApiProperty({ example: '역삼동', description: '동/읍/면 이름' })
   district: string;
+}
 
-  @ApiProperty({ example: '역삼동', description: '동 이름' })
-  neighborhood: string;
+export class LocationBase extends AddressInfo {
+  @ApiProperty({ example: 1, description: '위치 고유 식별자' })
+  id: number;
+}
 
+export class PostCount {
   @ApiProperty({ example: 10, description: '해당 지역의 게시글 수' })
   postCount: number;
 }
 
-export class LocationResponseDto extends OmitType(Location, [
+export class LocationResponseDto extends LocationBase {}
+
+export class LocationWithPostCountDto extends IntersectionType(
+  LocationBase,
+  PostCount,
+) {}
+
+export class PostCountResponseDto extends PickType(LocationWithPostCountDto, [
   'postCount',
 ] as const) {}
 
-export class LocationWithPostCountDto extends Location {}
-
-export class PostCountResponseDto extends PickType(Location, [
-  'postCount',
-] as const) {}
+export class AddressInfoDto extends AddressInfo {}

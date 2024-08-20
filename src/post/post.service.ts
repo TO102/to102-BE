@@ -24,18 +24,18 @@ export class PostService {
 
     return posts.map((post) => {
       const latestPostDto = new LatestPostDto();
-      latestPostDto.id = post.post_id;
+      latestPostDto.id = post.postId;
       latestPostDto.title = post.title;
       latestPostDto.author = {
         id: post.user.userId,
         name: post.user.username,
       };
       latestPostDto.tags = post.postTags.map((postTag) => ({
-        id: postTag.tag.tag_id,
+        id: postTag.tag.tagId,
         name: postTag.tag.name,
       }));
       latestPostDto.location = {
-        id: post.location.location_id,
+        id: post.location.locationId,
         city: post.location.city,
         district: post.location.district,
       };

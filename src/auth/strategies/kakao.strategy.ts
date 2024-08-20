@@ -9,6 +9,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     super({
       clientID: configService.get('KAKAO_CLIENT_ID'),
       callbackURL: configService.get('KAKAO_CALLBACK_URL'),
+      //scope: ['profile_nickname', 'profile_image', 'account_email'],
     });
   }
 
@@ -21,9 +22,9 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     // Implement validation logic
     const { id, username, _json } = profile;
     const user = {
-      id: id,
-      username: username,
-      email: _json.kakao_account?.email,
+      id,
+      username,
+      kakao_account: _json.kakao_account,
     };
     done(null, user);
   }

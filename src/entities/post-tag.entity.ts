@@ -2,10 +2,10 @@ import { Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Post } from './post.entity';
 import { Tag } from './tag.entity';
 
-@Entity()
+@Entity('post_tag')
 export class PostTag {
-  @PrimaryGeneratedColumn()
-  post_tag_id: number;
+  @PrimaryGeneratedColumn({ name: 'post_tag_id' })
+  postTagId: number;
 
   @ManyToOne(() => Post, (post) => post.postTags)
   @JoinColumn({ name: 'post_id' })
