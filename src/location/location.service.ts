@@ -1,11 +1,39 @@
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { AddressInfo } from './location.types';
+import { AddressInfo, LocationResponseDto } from './dto/location.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Location } from '../entities/location.entity';
 
 @Injectable()
 export class LocationService {
-  constructor(private configService: ConfigService) {}
+  constructor(
+    @InjectRepository(Location)
+    private locationRepository: Repository<Location>,
+    private configService: ConfigService,
+  ) {}
+
+  async getLocationById(id: number): Promise<LocationResponseDto> {
+    const location = await this.locationRepository.findOne({
+      where: { locationId: id },
+    });
+
+    if (!location) {
+      throw new NotFoundException(`Location with ID ${id} not found`);
+    }
+
+    return {
+      id: location.locationId,
+      province: location.province,
+      city: location.city,
+      district: location.district,
+    };
+  }
 
   async getAddressFromCoordinates(
     latitude: number,
@@ -13,50 +41,36 @@ export class LocationService {
   ): Promise<AddressInfo> {
     const apiKey = this.configService.get<string>('KAKAO_CLIENT_ID');
     if (!apiKey) {
-      throw new HttpException(
-        'kako API key가 유효하지 못합니다.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
-      );
+      throw new InternalServerErrorException('Kakao API key is not valid');
     }
+
     try {
       const response = await axios.get(
         'https://dapi.kakao.com/v2/local/geo/coord2address.json',
         {
-          params: {
-            x: longitude,
-            y: latitude,
-          },
-          headers: {
-            Authorization: `KakaoAK ${apiKey}`,
-          },
+          params: { x: longitude, y: latitude },
+          headers: { Authorization: `KakaoAK ${apiKey}` },
         },
       );
 
-      if (response.data.documents.length === 0) {
-        throw new HttpException(
-          '해당 좌표에 해당하는 주소는 없습니다.',
-          HttpStatus.NOT_FOUND,
-        );
-      }
-
-      const addressInfo = response.data.documents[0].address;
-
+      const addressInfo = response.data.documents[0]?.address;
       if (!addressInfo) {
-        throw new HttpException(
-          '주소 정보가 불완전합니다.',
-          HttpStatus.INTERNAL_SERVER_ERROR,
+        throw new NotFoundException(
+          'No address found for the given coordinates',
         );
       }
 
       return {
-        region_1depth_name: addressInfo.region_1depth_name,
-        region_2depth_name: addressInfo.region_2depth_name,
-        region_3depth_name: addressInfo.region_3depth_name,
+        province: addressInfo.region_1depth_name,
+        city: addressInfo.region_2depth_name,
+        district: addressInfo.region_3depth_name,
       };
     } catch (error) {
-      throw new HttpException(
-        '주소를 가져오는데 실패하였습니다.',
-        HttpStatus.INTERNAL_SERVER_ERROR,
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Failed to fetch address information',
       );
     }
   }

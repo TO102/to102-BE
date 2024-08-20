@@ -11,7 +11,7 @@ export class AddressInfo {
   district: string;
 }
 
-export class LocationBase extends AddressInfo {
+export class LocationResponseDto extends AddressInfo {
   @ApiProperty({ example: 1, description: '위치 고유 식별자' })
   id: number;
 }
@@ -21,15 +21,11 @@ export class PostCount {
   postCount: number;
 }
 
-export class LocationResponseDto extends LocationBase {}
-
 export class LocationWithPostCountDto extends IntersectionType(
-  LocationBase,
+  LocationResponseDto,
   PostCount,
 ) {}
 
 export class PostCountResponseDto extends PickType(LocationWithPostCountDto, [
   'postCount',
 ] as const) {}
-
-export class AddressInfoDto extends AddressInfo {}

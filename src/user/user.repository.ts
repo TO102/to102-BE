@@ -22,7 +22,7 @@ export class UsersRepository {
       user = this.userRepository.create({
         oauthProvider: provider,
         oauthId: oauthId,
-        nickname: userData.nickname || 'anonymous',
+        nickname: userData.nickname,
         email: userData.email,
         profilePictureUrl: userData.profile_picture_url,
       });

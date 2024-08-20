@@ -1,27 +1,46 @@
-import { Controller, Get, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import {
-  LocationResponseDto,
-  LocationWithPostCountDto,
-  PostCountResponseDto,
-} from './dto/location.dto';
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiQuery,
+} from '@nestjs/swagger';
+import { AddressInfo, LocationResponseDto } from './dto/location.dto';
+import { LocationService } from './location.service';
 
 @ApiTags('위치')
 @Controller('locations')
 export class LocationController {
-  @Get()
+  constructor(private readonly locationService: LocationService) {}
+
+  @Get('address')
   @ApiOperation({
-    summary: '모든 위치 정보 조회',
-    description: '전국의 모든 위치 정보를 조회합니다.',
+    summary: '좌표로부터 위치 정보 조회',
+    description: '위도와 경도를 바탕으로 현재 위치 정보를 반환합니다.',
+  })
+  @ApiQuery({
+    name: 'latitude',
+    required: true,
+    example: 37.5665,
+    description: '위도',
+  })
+  @ApiQuery({
+    name: 'longitude',
+    required: true,
+    example: 126.978,
+    description: '경도',
   })
   @ApiResponse({
     status: 200,
-    description: '위치 정보 목록',
-    type: [LocationResponseDto],
+    description: '위치 정보',
+    type: AddressInfo,
   })
-  getAllLocations(): LocationResponseDto[] {
-    // 구현 내용
-    return [];
+  async getAddressFromCoordinates(
+    @Query('latitude') latitude: number,
+    @Query('longitude') longitude: number,
+  ): Promise<AddressInfo> {
+    return this.locationService.getAddressFromCoordinates(latitude, longitude);
   }
 
   @Get(':id')
@@ -29,30 +48,13 @@ export class LocationController {
     summary: '특정 위치 정보 조회',
     description: '지정된 ID의 위치 정보를 조회합니다.',
   })
-  @ApiParam({ name: 'id', description: '위치 ID' })
+  @ApiParam({ name: 'id', description: '위치 ID', example: 10 })
   @ApiResponse({
     status: 200,
     description: '위치 정보',
     type: LocationResponseDto,
   })
-  getLocationById(@Param('id') id: string): LocationResponseDto {
-    // 구현 내용
-    return {} as LocationResponseDto;
-  }
-
-  @Get(':id/posts/count')
-  @ApiOperation({
-    summary: '특정 지역의 게시글 수 조회',
-    description: '지정된 위치 ID에 해당하는 지역의 게시글 수를 조회합니다.',
-  })
-  @ApiParam({ name: 'id', description: '위치 ID' })
-  @ApiResponse({
-    status: 200,
-    description: '게시글 수를 포함한 위치 정보',
-    type: LocationWithPostCountDto,
-  })
-  getPostCountByLocation(@Param('id') id: string): LocationWithPostCountDto {
-    // 구현 내용
-    return {} as LocationWithPostCountDto;
+  getLocationById(@Param('id') id: number): Promise<LocationResponseDto> {
+    return this.locationService.getLocationById(id);
   }
 }
