@@ -6,12 +6,7 @@ import { UsersRepository } from '../user/user.repository';
 import { User } from 'src/entities/user.entity';
 import { URLSearchParams } from 'url';
 import axios from 'axios';
-
-interface LoginResult {
-  user: User;
-  accessToken: string;
-  refreshToken: string;
-}
+import { KakaoUser, LoginResult } from './auth.types';
 
 @Injectable()
 export class AuthService {
@@ -61,42 +56,25 @@ export class AuthService {
       );
     }
   }
-  // async kakaoLogin(code: string): Promise<LoginResult> {
-  //   const kakaoToken = await this.getKakaoToken(code);
-  //   const kakaoUserData = await this.getKakaoUserInfo(kakaoToken);
 
-  //   const user = await this.usersRepository.findOrCreateByOAuthId(
-  //     'kakao',
-  //     kakaoUserData.id,
-  //     {
-  //       nickname: kakaoUserData.kakao_account.profile.nickname,
-  //       email: kakaoUserData.kakao_account.email,
-  //       profile_picture_url:
-  //         kakaoUserData.kakao_account.profile.profile_image_url,
-  //     },
-  //   );
-  //   await this.usersRepository.updateLastLogin(user.user_id);
-  //   const { accessToken, refreshToken } = await this.getTokens(user);
-  //   return { user, accessToken, refreshToken };
-  // }
-  async kakaoLogin(code: string): Promise<LoginResult> {
+  async kakaoLogin(kakaoUser: KakaoUser): Promise<LoginResult> {
     try {
-      console.log('Starting kakaoLogin with code:', code);
+      const { id, kakao_account } = kakaoUser;
+      //console.log('Starting kakaoLogin with code:', code);
 
-      const kakaoToken = await this.getKakaoToken(code);
-      console.log('Received Kakao token:', kakaoToken);
+      // const kakaoToken = await this.getKakaoToken(code);
+      // console.log('Received Kakao token:', kakaoToken);
 
-      const kakaoUserData = await this.getKakaoUserInfo(kakaoToken);
-      console.log('Received Kakao user data:', kakaoUserData);
+      // const kakaoUserData = await this.getKakaoUserInfo(kakaoToken);
+      // console.log('Received Kakao user data:', kakaoUserData);
 
       const user = await this.usersRepository.findOrCreateByOAuthId(
         'kakao',
-        kakaoUserData.id,
+        id,
         {
-          nickname: kakaoUserData.kakao_account.profile.nickname,
-          email: kakaoUserData.kakao_account.email,
-          profile_picture_url:
-            kakaoUserData.kakao_account.profile.profile_image_url,
+          nickname: kakao_account?.profile?.nickname,
+          email: kakao_account?.email,
+          profile_picture_url: kakao_account?.profile?.profile_image_url,
         },
       );
       console.log('User found or created:', user);
