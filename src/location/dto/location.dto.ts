@@ -35,7 +35,6 @@ export class PostCountResponseDto extends PickType(LocationWithPostCountDto, [
   'postCount',
 ] as const) {}
 
-// 새로운 getCitiesByProvince API를 위한 DTO
 export class ProvinceCitiesResponseDto {
   @ApiProperty({ example: '서울특별시', description: '시/도 이름' })
   province: string;
@@ -45,4 +44,12 @@ export class ProvinceCitiesResponseDto {
     description: '해당 광역시/특별시/도의 구/시 목록',
   })
   cities: string[];
+}
+
+export class ProvinceResponseDto {
+  @ApiProperty({
+    example: ['서울특별시', '부산광역시', '기타 다른 광역시/특별시/도 정보'],
+    description: '광역시/특별시/도 목록',
+  })
+  provinces: string[];
 }

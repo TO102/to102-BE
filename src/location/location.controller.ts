@@ -10,6 +10,7 @@ import {
   AddressInfo,
   LocationResponseDto,
   ProvinceCitiesResponseDto,
+  ProvinceResponseDto,
 } from './dto/location.dto';
 import { LocationService } from './location.service';
 
@@ -47,19 +48,18 @@ export class LocationController {
     return this.locationService.getAddressFromCoordinates(latitude, longitude);
   }
 
-  @Get(':id')
+  @Get('province')
   @ApiOperation({
-    summary: '특정 위치 정보 조회',
-    description: '지정된 ID의 위치 정보를 조회합니다.',
+    summary: '모든 광역시/특별시/도 요소',
+    description: '모든 광역시/특별시/도의 정보를 반환합니다.',
   })
-  @ApiParam({ name: 'id', description: '위치 ID', example: 10 })
   @ApiResponse({
     status: 200,
-    description: '위치 정보',
-    type: LocationResponseDto,
+    description: '광역시/특별시/도 정보',
+    type: ProvinceResponseDto,
   })
-  getLocationById(@Param('id') id: number): Promise<LocationResponseDto> {
-    return this.locationService.getLocationById(id);
+  async getProvince(): Promise<ProvinceResponseDto> {
+    return this.locationService.getProvinces();
   }
 
   @Get('province/:province')
@@ -82,5 +82,20 @@ export class LocationController {
     @Param('province') province: string,
   ): Promise<ProvinceCitiesResponseDto> {
     return this.locationService.getCitiesByProvince(province);
+  }
+
+  @Get(':id')
+  @ApiOperation({
+    summary: '특정 위치 정보 조회',
+    description: '지정된 ID의 위치 정보를 조회합니다.',
+  })
+  @ApiParam({ name: 'id', description: '위치 ID', example: 10 })
+  @ApiResponse({
+    status: 200,
+    description: '위치 정보',
+    type: LocationResponseDto,
+  })
+  getLocationById(@Param('id') id: number): Promise<LocationResponseDto> {
+    return this.locationService.getLocationById(id);
   }
 }

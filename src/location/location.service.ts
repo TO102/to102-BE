@@ -10,6 +10,7 @@ import {
   AddressInfo,
   LocationResponseDto,
   ProvinceCitiesResponseDto,
+  ProvinceResponseDto,
 } from './dto/location.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -110,6 +111,20 @@ export class LocationService {
     return {
       province,
       cities,
+    };
+  }
+
+  async getProvinces(): Promise<ProvinceResponseDto> {
+    const locations = await this.locationRepository
+      .createQueryBuilder('location')
+      .select('DISTINCT location.province', 'province')
+      .orderBy('location.province', 'ASC')
+      .getRawMany();
+
+    const provinces = locations.map((location) => location.province);
+
+    return {
+      provinces: provinces,
     };
   }
 }
