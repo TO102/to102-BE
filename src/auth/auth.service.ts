@@ -36,10 +36,8 @@ export class AuthService {
       console.log('Kakao token response:', response.data);
       return response.data.access_token;
     } catch (error) {
-      console.error(
-        'Error getting Kakao token:',
-        error.response?.data || error.message,
-      );
+      this.logger.error('Error getting Kakao token:', error);
+      this.logger.error('Error response:', error.response?.data);
       throw new UnauthorizedException(
         '카카오 토큰을 가져오는데 실패하였습니다.',
       );

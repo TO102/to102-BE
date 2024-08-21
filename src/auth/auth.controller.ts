@@ -110,8 +110,11 @@ export class AuthController {
       });
     } catch (error) {
       this.logger.error('카카오 인증 처리 중 오류 발생:', error);
+      if (error.response) {
+        this.logger.error('카카오 API 응답:', error.response.data);
+      }
       return res
-        .status(401)
+        .status(500)
         .json({ message: '카카오 인증 처리 중 오류가 발생했습니다.' });
     }
   }
