@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
@@ -39,10 +40,20 @@ export class LocationService {
     };
   }
 
+  private isValidCoordinate(latitude: number, longitude: number): boolean {
+    return (
+      latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
+    );
+  }
+
   async getAddressFromCoordinates(
     latitude: number,
     longitude: number,
   ): Promise<AddressInfo> {
+    if (!this.isValidCoordinate(latitude, longitude)) {
+      throw new BadRequestException('올바르지 않은 좌표 정보입니다.');
+    }
+
     const apiKey = this.configService.get<string>('KAKAO_CLIENT_ID');
     if (!apiKey) {
       throw new InternalServerErrorException('Kakao API key is not valid');
