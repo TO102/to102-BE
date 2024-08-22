@@ -8,6 +8,13 @@ declare const module: any;
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.enableCors({
+    origin: 'http://localhost:5173',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  });
+
   app.use(cookieParser());
   const configService = app.get(ConfigService);
   const config = new DocumentBuilder()
@@ -18,13 +25,6 @@ async function bootstrap() {
     .build();
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
-
-  // CORS
-  app.enableCors({
-    origin: configService.get('FRONTEND_URL') || '*',
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // 쿠키 허용
-  });
 
   const port = configService.get('PORT') || 3000;
   await app.listen(port);

@@ -1,134 +1,107 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { UsersRepository } from '../user/user.repository';
-import { User } from 'src/entities/user.entity';
-import { URLSearchParams } from 'url';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../entities/user.entity';
 import axios from 'axios';
-import { KakaoUser, LoginResult } from './auth.types';
 
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
+
   constructor(
-    private configService: ConfigService,
-    private jwtService: JwtService,
-    private usersRepository: UsersRepository,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async getKakaoToken(code: string): Promise<string> {
-    const tokenUrl = 'https://kauth.kakao.com/oauth/token';
-    const params = new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: this.configService.get('KAKAO_CLIENT_ID'),
-      redirect_uri: this.configService.get('KAKAO_CALLBACK_URL'),
-      code,
+  async validateUser(oauthProvider: string, oauthId: string): Promise<User> {
+    let user = await this.userRepository.findOne({
+      where: { oauthProvider, oauthId },
     });
 
-    try {
-      console.log('Requesting Kakao token with params:', params.toString());
-      const response = await axios.post(tokenUrl, params.toString(), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
+    if (!user) {
+      user = this.userRepository.create({
+        oauthProvider,
+        oauthId,
+        nickname: '',
+        email: '',
+        profilePictureUrl: '',
       });
-      console.log('Kakao token response:', response.data);
-      return response.data.access_token;
-    } catch (error) {
-      this.logger.error('Error getting Kakao token:', error);
-      this.logger.error('Error response:', error.response?.data);
-      throw new UnauthorizedException(
-        '카카오 토큰을 가져오는데 실패하였습니다.',
-      );
+
+      await this.userRepository.save(user);
+      this.logger.log(`새로운 사용자 생성: ${user.oauthId}`);
     }
-  }
-  async getKakaoUserInfo(access_token: string): Promise<any> {
-    try {
-      const response = await axios.get('https://kapi.kakao.com/v2/user/me', {
-        headers: { Authorization: `Bearer ${access_token}` },
-      });
-      return response.data;
-    } catch (error) {
-      throw new UnauthorizedException(
-        '카카오 유저 정보를 가져오는데 실패하였습니다.',
-      );
-    }
+
+    return user;
   }
 
-  async kakaoLogin(kakaoUser: KakaoUser): Promise<LoginResult> {
-    this.logger.debug(`kakaoUser : ${JSON.stringify(kakaoUser)}`);
-    try {
-      const { id, kakao_account } = kakaoUser;
-      this.logger.debug(`kakaoID : ${id}`);
-      this.logger.debug(`kakaoAccount : ${JSON.stringify(kakao_account)}`);
-      const user = await this.usersRepository.findOrCreateByOAuthId(
-        'kakao',
-        id.toString(),
-        {
-          nickname: kakao_account?.profile?.nickname,
-          email: kakao_account?.email,
-          profile_picture_url: kakao_account?.profile?.profile_image_url,
+  async login(user: User) {
+    const payload = { oauthId: user.oauthId, nickname: user.nickname };
+    return {
+      access_token: this.jwtService.sign(payload),
+    };
+  }
+
+  async updateUser(user: User): Promise<User> {
+    this.logger.log(`사용자 업데이트: ${user.oauthId}`);
+    return await this.userRepository.save(user);
+  }
+
+  public async getKakaoToken(code: string): Promise<{ access_token: string }> {
+    const response = await axios.post(
+      'https://kauth.kakao.com/oauth/token',
+      null,
+      {
+        params: {
+          grant_type: 'authorization_code',
+          client_id: this.configService.get('KAKAO_CLIENT_ID'),
+          redirect_uri: this.configService.get('KAKAO_REDIRECT_URI'),
+          code: code,
         },
-      );
-      console.log('User found or created:', user);
-
-      await this.usersRepository.updateLastLogin(user.userId);
-      const { accessToken, refreshToken } = await this.getTokens(user);
-
-      return { user, accessToken, refreshToken };
-    } catch (error) {
-      console.error('Error in kakaoLogin:', error);
-      throw error;
-    }
-  }
-
-  async getTokens(user: User) {
-    const accessToken = this.generateAccessToken(user);
-    const refreshToken = await this.generateRefreshToken(user);
-    return { accessToken, refreshToken };
-  }
-
-  generateAccessToken(user: User): string {
-    const payload = { userId: user.userId };
-    return this.jwtService.sign(payload);
-  }
-
-  async generateRefreshToken(user: User): Promise<string> {
-    const payload = { userId: user.userId };
-    const refreshToken = this.jwtService.sign(payload, {
-      secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN'),
-    });
-
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
-    await this.usersRepository.setCurrentRefreshToken(
-      user.userId,
-      hashedRefreshToken,
+      },
     );
 
-    return refreshToken;
+    return { access_token: response.data.access_token };
   }
 
-  async refresh(refreshToken: string): Promise<string> {
-    try {
-      const payload = this.jwtService.verify(refreshToken, {
-        secret: this.configService.get('JWT_REFRESH_SECRET'),
-      });
-      const user = await this.usersRepository.getUserWithCurrentRefreshToken(
-        payload.userId,
-      );
+  async getKakaoUserInfo(accessToken: string): Promise<any> {
+    const response = await axios.get('https://kapi.kakao.com/v2/user/me', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
 
-      if (
-        !user ||
-        !(await bcrypt.compare(refreshToken, user.currentRefreshToken))
-      ) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
+    const { id, kakao_account, properties } = response.data;
+    return {
+      id: id.toString(),
+      nickname: properties.nickname,
+      email: kakao_account.email,
+      profile_image: properties.profile_image,
+    };
+  }
 
-      return this.generateAccessToken(user);
-    } catch (err) {
-      throw new UnauthorizedException('Invalid refresh token');
-    }
+  async processKakaoLogin(code: string) {
+    const kakaoToken = await this.getKakaoToken(code);
+    const userInfo = await this.getKakaoUserInfo(kakaoToken.access_token);
+
+    console.log('카카오에서 받은 사용자 정보:', userInfo);
+
+    let user = await this.validateUser('kakao', userInfo.id);
+
+    user.nickname = userInfo.nickname || user.nickname;
+    user.email = userInfo.email || user.email;
+    user.profilePictureUrl = userInfo.profile_image || user.profilePictureUrl;
+
+    user = await this.updateUser(user);
+
+    console.log('데이터베이스에 저장된 사용자 정보:', {
+      id: user.userId,
+      nickname: user.nickname,
+      email: user.email,
+      profilePictureUrl: user.profilePictureUrl,
+    });
+
+    return this.login(user);
   }
 }

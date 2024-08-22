@@ -13,7 +13,7 @@ import { ChatRoom } from './entities/chat-room.entity';
 import { Message } from './entities/message.entity';
 import { Friendship } from './entities/friendship.entity';
 import { Location } from './entities/location.entity';
-
+import { UsedAuthCode } from './entities/used-auth-code.entity';
 config();
 
 const configService = new ConfigService();
@@ -37,6 +37,7 @@ export const dataSourceOptions: DataSourceOptions = {
     Message,
     Friendship,
     Location,
+    UsedAuthCode,
   ],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: configService.get('NODE_ENV') !== 'production',

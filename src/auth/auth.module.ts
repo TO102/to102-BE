@@ -1,32 +1,30 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
-import { KakaoStrategy } from './strategies/kakao.strategy';
-import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { Module } from '@nestjs/common';
-import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
-import { UsersRepository } from '../user/user.repository';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from 'src/entities/user.entity';
-import { UserModule } from 'src/user/user.module';
+import { AuthController } from './auth.controller';
+import { KakaoStrategy } from './strategies/kakao.strategy';
+import { User } from '../entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
-    ConfigModule,
-    PassportModule,
-    UserModule,
+    PassportModule.register({ defaultStrategy: 'kakao' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET'),
-        signOptions: { expiresIn: configService.get<string>('JWT_EXPIRES_IN') },
+        signOptions: {
+          expiresIn: configService.get<string | number>('JWT_EXPIRES_IN'),
+        },
       }),
       inject: [ConfigService],
     }),
+    ConfigModule,
+    TypeOrmModule.forFeature([User]),
   ],
+  providers: [AuthService, KakaoStrategy],
   controllers: [AuthController],
-  providers: [AuthService, KakaoStrategy, JwtStrategy, UsersRepository],
 })
 export class AuthModule {}
