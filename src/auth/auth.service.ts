@@ -39,7 +39,12 @@ export class AuthService {
   }
 
   async login(user: User) {
-    const payload = { oauthId: user.oauthId, nickname: user.nickname };
+    const payload = {
+      sub: user.userId,
+      oauthId: user.oauthId,
+      nickname: user.nickname,
+    };
+    this.logger.log(`로그인 payload 생성: ${JSON.stringify(payload)}`);
     return {
       access_token: this.jwtService.sign(payload),
     };
@@ -50,21 +55,36 @@ export class AuthService {
     return await this.userRepository.save(user);
   }
 
-  public async getKakaoToken(code: string): Promise<{ access_token: string }> {
-    const response = await axios.post(
-      'https://kauth.kakao.com/oauth/token',
-      null,
-      {
-        params: {
-          grant_type: 'authorization_code',
-          client_id: this.configService.get('KAKAO_CLIENT_ID'),
-          redirect_uri: this.configService.get('KAKAO_REDIRECT_URI'),
-          code: code,
+  async getKakaoToken(
+    code: string,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    try {
+      const response = await axios.post(
+        'https://kauth.kakao.com/oauth/token',
+        null,
+        {
+          params: {
+            grant_type: 'authorization_code',
+            client_id: this.configService.get('KAKAO_CLIENT_ID'),
+            redirect_uri: this.configService.get('KAKAO_CALLBACK_URL'),
+            code: code,
+          },
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8',
+          },
         },
-      },
-    );
-
-    return { access_token: response.data.access_token };
+      );
+      return {
+        access_token: response.data.access_token,
+        refresh_token: response.data.refresh_token,
+      };
+    } catch (error) {
+      this.logger.error(
+        '카카오 토큰 가져오기 실패:',
+        error.response?.data || error.message,
+      );
+      throw error;
+    }
   }
 
   async getKakaoUserInfo(accessToken: string): Promise<any> {
@@ -85,23 +105,34 @@ export class AuthService {
     const kakaoToken = await this.getKakaoToken(code);
     const userInfo = await this.getKakaoUserInfo(kakaoToken.access_token);
 
-    console.log('카카오에서 받은 사용자 정보:', userInfo);
+    this.logger.log('카카오 유저 정보:', userInfo);
 
-    let user = await this.validateUser('kakao', userInfo.id);
-
-    user.nickname = userInfo.nickname || user.nickname;
-    user.email = userInfo.email || user.email;
-    user.profilePictureUrl = userInfo.profile_image || user.profilePictureUrl;
-
-    user = await this.updateUser(user);
-
-    console.log('데이터베이스에 저장된 사용자 정보:', {
-      id: user.userId,
-      nickname: user.nickname,
-      email: user.email,
-      profilePictureUrl: user.profilePictureUrl,
+    let user = await this.userRepository.findOne({
+      where: { oauthProvider: 'kakao', oauthId: userInfo.id },
     });
 
-    return this.login(user);
+    if (!user) {
+      // 새 사용자 생성
+      user = this.userRepository.create({
+        oauthProvider: 'kakao',
+        oauthId: userInfo.id,
+        nickname: userInfo.nickname,
+        email: userInfo.email,
+        profilePictureUrl: userInfo.profile_image,
+        currentRefreshToken: kakaoToken.refresh_token,
+      });
+      this.logger.log('유저 정보 새로 DB에 저장:', user);
+    } else {
+      // 기존 사용자 정보 업데이트
+      user.nickname = userInfo.nickname;
+      user.email = userInfo.email;
+      user.profilePictureUrl = userInfo.profile_image;
+      this.logger.log('기존 유저 정보 업데이트:', user);
+    }
+
+    // 사용자 정보 저장 또는 업데이트
+    await this.userRepository.save(user);
+
+    return kakaoToken.access_token;
   }
 }

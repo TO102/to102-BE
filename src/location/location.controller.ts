@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, HttpStatus, Param, Put, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -7,7 +7,6 @@ import {
   ApiQuery,
 } from '@nestjs/swagger';
 import {
-  AddressInfo,
   LocationResponseDto,
   ProvinceCitiesResponseDto,
   ProvinceResponseDto,
@@ -19,10 +18,16 @@ import { LocationService } from './location.service';
 export class LocationController {
   constructor(private readonly locationService: LocationService) {}
 
-  @Get('address')
+  @Put('user/:id')
   @ApiOperation({
-    summary: '좌표로부터 위치 정보 조회',
-    description: '위도와 경도를 바탕으로 현재 위치 정보를 반환합니다.',
+    summary: '사용자 위치 정보 업데이트',
+    description:
+      '사용자 ID와 좌표를 받아 해당 사용자의 위치 정보를 업데이트합니다.',
+  })
+  @ApiParam({
+    name: 'id',
+    required: true,
+    description: '사용자 ID',
   })
   @ApiQuery({
     name: 'latitude',
@@ -37,15 +42,16 @@ export class LocationController {
     description: '경도',
   })
   @ApiResponse({
-    status: 200,
-    description: '위치 정보',
-    type: AddressInfo,
+    status: HttpStatus.OK,
+    description: '업데이트된 위치 정보',
+    type: LocationResponseDto,
   })
-  async getAddressFromCoordinates(
+  async updateUserLocation(
+    @Param('id') userId: number,
     @Query('latitude') latitude: number,
     @Query('longitude') longitude: number,
-  ): Promise<AddressInfo> {
-    return this.locationService.getAddressFromCoordinates(latitude, longitude);
+  ): Promise<LocationResponseDto> {
+    return this.locationService.updateUserLocation(userId, latitude, longitude);
   }
 
   @Get('province')

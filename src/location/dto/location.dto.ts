@@ -1,22 +1,20 @@
 import { ApiProperty, PickType, IntersectionType } from '@nestjs/swagger';
+import { Location } from '../../entities/location.entity';
 
 // 기본 주소 정보 DTO
-export class AddressInfo {
-  @ApiProperty({ example: '서울특별시', description: '시/도 이름' })
-  province: string;
-
-  @ApiProperty({ example: '강남구', description: '시/군/구 이름' })
-  city: string;
-
-  @ApiProperty({ example: '역삼동', description: '동/읍/면 이름' })
-  district: string;
-}
+export class AddressInfo extends PickType(Location, [
+  'province',
+  'city',
+  'district',
+] as const) {}
 
 // 위치 응답 DTO
-export class LocationResponseDto extends AddressInfo {
-  @ApiProperty({ example: 1, description: '위치 고유 식별자' })
-  id: number;
-}
+export class LocationResponseDto extends PickType(Location, [
+  'locationId',
+  'province',
+  'city',
+  'district',
+] as const) {}
 
 // 게시글 수 DTO
 export class PostCount {

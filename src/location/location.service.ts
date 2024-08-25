@@ -15,6 +15,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Location } from '../entities/location.entity';
+import { User } from 'src/entities/user.entity';
 
 @Injectable()
 export class LocationService {
@@ -22,6 +23,8 @@ export class LocationService {
     @InjectRepository(Location)
     private locationRepository: Repository<Location>,
     private configService: ConfigService,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
   ) {}
 
   async getLocationById(id: number): Promise<LocationResponseDto> {
@@ -34,7 +37,7 @@ export class LocationService {
     }
 
     return {
-      id: location.locationId,
+      locationId: location.locationId,
       province: location.province,
       city: location.city,
       district: location.district,
@@ -72,7 +75,7 @@ export class LocationService {
       const addressInfo = response.data.documents[0]?.address;
       if (!addressInfo) {
         throw new NotFoundException(
-          'No address found for the given coordinates',
+          '주어진 좌표에 위치하는 해당 주소가 없습니다.',
         );
       }
 
@@ -125,6 +128,53 @@ export class LocationService {
 
     return {
       provinces: provinces,
+    };
+  }
+
+  async updateUserLocation(
+    userId: number,
+    latitude: number,
+    longitude: number,
+  ): Promise<LocationResponseDto> {
+    const user = await this.userRepository.findOne({
+      where: { userId },
+      relations: ['location'],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+
+    const addressInfo = await this.getAddressFromCoordinates(
+      latitude,
+      longitude,
+    );
+
+    let location: Location;
+    if (user.location) {
+      location = user.location;
+      location.province = addressInfo.province;
+      location.city = addressInfo.city;
+      location.district = addressInfo.district;
+    } else {
+      location = this.locationRepository.create({
+        province: addressInfo.province,
+        city: addressInfo.city,
+        district: addressInfo.district,
+        user: user,
+      });
+    }
+
+    const savedLocation = await this.locationRepository.save(location);
+
+    user.location = savedLocation;
+    await this.userRepository.save(user);
+
+    return {
+      locationId: savedLocation.locationId,
+      province: savedLocation.province,
+      city: savedLocation.city,
+      district: savedLocation.district,
     };
   }
 }

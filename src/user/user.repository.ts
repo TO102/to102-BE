@@ -49,6 +49,13 @@ export class UsersRepository {
       currentRefreshToken: null,
     });
   }
+  async findOne(options: any): Promise<User | undefined> {
+    return this.userRepository.findOne(options);
+  }
+
+  async save(user: User): Promise<User> {
+    return this.userRepository.save(user);
+  }
 
   async findById(userId: number): Promise<User | null> {
     return this.userRepository.findOne({ where: { userId: userId } });

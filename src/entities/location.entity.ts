@@ -1,6 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
-import { User } from './user.entity';
 
 @Entity()
 export class Location {
@@ -19,8 +18,4 @@ export class Location {
   @ApiProperty({ description: '동/읍/면' })
   @Column()
   district: string; // region_3depth_name에 해당
-
-  @ApiProperty({ description: '관련 사용자', type: () => User })
-  @OneToOne(() => User, (user) => user.location)
-  user: User;
 }

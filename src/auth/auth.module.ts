@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
@@ -7,6 +7,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { KakaoStrategy } from './strategies/kakao.strategy';
 import { User } from '../entities/user.entity';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -23,8 +24,10 @@ import { User } from '../entities/user.entity';
     }),
     ConfigModule,
     TypeOrmModule.forFeature([User]),
+    forwardRef(() => UserModule),
   ],
   providers: [AuthService, KakaoStrategy],
   controllers: [AuthController],
+  exports: [AuthService],
 })
 export class AuthModule {}

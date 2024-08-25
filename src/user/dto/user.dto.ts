@@ -1,41 +1,26 @@
-import { ApiProperty, PickType, OmitType } from '@nestjs/swagger';
+import { ApiProperty, PickType } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, MaxLength } from 'class-validator';
+import { User } from '../../entities/user.entity';
 
-export class User {
-  @ApiProperty({ example: 1, description: '사용자 고유 식별자' })
-  id: number;
-
-  @ApiProperty({ example: 'john_doe', description: '사용자 이름' })
-  username: string;
-
-  @ApiProperty({ example: 'john@example.com', description: '사용자 이메일' })
-  email: string;
-
-  @ApiProperty({ example: 'password123', description: '사용자 비밀번호' })
-  password: string;
-
-  @ApiProperty({ example: '서울시 강남구', description: '사용자 위치' })
-  location: string;
-
-  @ApiProperty({
-    example: '2023-08-13T12:00:00Z',
-    description: '사용자 가입 시간',
-  })
-  createdAt: Date;
-
-  @ApiProperty({
-    example: '2023-08-13T12:30:00Z',
-    description: '마지막 로그인 시간',
-  })
-  lastLoginAt: Date;
-}
-
-export class UserResponseDto extends OmitType(User, ['password'] as const) {}
-
-export class UpdateUserDto extends PickType(User, [
+export class UserResponseDto extends PickType(User, [
+  'userId',
   'username',
+  'nickname',
   'email',
-  'location',
+  'profilePictureUrl',
+  'createdAt',
+  'updatedAt',
+  'lastLogin',
+  'averageRating',
 ] as const) {}
+
+export class UsernameUpdateDto {
+  @ApiProperty({ example: 'new_username', description: '새로운 사용자 이름' })
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(50)
+  username: string;
+}
 
 export class VerifyLocationDto {
   @ApiProperty({ example: 37.5665, description: '위도' })

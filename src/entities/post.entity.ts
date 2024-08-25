@@ -9,8 +9,6 @@ import {
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { User } from './user.entity';
-import { Location } from './location.entity';
-
 @Entity('post')
 export class Post {
   @ApiProperty({ description: '게시글 고유 식별자' })
@@ -22,10 +20,13 @@ export class Post {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ApiProperty({ description: '게시글 관련 위치', type: () => Location })
-  @ManyToOne(() => Location)
-  @JoinColumn({ name: 'location_id' })
-  location: Location;
+  @ApiProperty({ description: '도/시' })
+  @Column()
+  province: string;
+
+  @ApiProperty({ description: '시/군/구' })
+  @Column()
+  city: string;
 
   @ApiProperty({ description: '게시글 제목' })
   @Column()

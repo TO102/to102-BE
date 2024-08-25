@@ -7,6 +7,8 @@ import {
   Body,
   Param,
   Query,
+  Headers,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -15,12 +17,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import {
-  CreatePostDto,
-  UpdatePostDto,
-  PostResponseDto,
-  LatestPostDto,
-} from './dto/post.dto';
+import { CreatePostDto, ResponsePostDto, LatestPostDto } from './dto/post.dto';
 import { PostService } from './post.service';
 
 @ApiTags('게시글')
@@ -29,38 +26,41 @@ export class PostController {
   constructor(private readonly postService: PostService) {}
 
   @Post()
-  @ApiOperation({
-    summary: '새 게시글 작성',
-    description: '새로운 게시글을 작성합니다.',
-  })
+  @ApiOperation({ summary: '새 게시글 작성' })
   @ApiResponse({
     status: 201,
     description: '게시글 생성 성공',
-    type: PostResponseDto,
+    type: ResponsePostDto,
   })
-  createPost(@Body() createPostDto: CreatePostDto): PostResponseDto {
-    // 구현 내용
-    return {} as PostResponseDto;
+  @ApiQuery({
+    name: 'access-token',
+    required: true,
+    description: '액세스 토큰',
+  })
+  async createPost(
+    @Query('access-token') token: string,
+    @Body() createPostDto: CreatePostDto,
+  ): Promise<ResponsePostDto> {
+    if (!token) {
+      throw new UnauthorizedException('Access token is required');
+    }
+    return this.postService.createPost(token, createPostDto);
   }
 
   @Get()
-  @ApiOperation({
-    summary: '모든 게시글 조회',
-    description: '모든 게시글을 조회합니다. 정렬 옵션을 포함할 수 있습니다.',
-  })
-  @ApiQuery({
-    name: 'sort',
-    required: false,
-    description: '정렬 옵션 (예: createdAt:desc)',
-  })
+  @ApiOperation({ summary: '모든 게시글 조회' })
   @ApiResponse({
     status: 200,
-    description: '게시글 목록',
-    type: [PostResponseDto],
+    description: '게시글 목록 조회 성공',
+    type: [ResponsePostDto],
   })
-  getAllPosts(@Query('sort') sort?: string): PostResponseDto[] {
-    // 구현 내용
-    return [];
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  async getAllPosts(
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ) {
+    return this.postService.getAllPosts(page, limit);
   }
 
   @Get('latest')
@@ -87,11 +87,11 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: '게시글 정보',
-    type: PostResponseDto,
+    type: ResponsePostDto,
   })
-  getPostById(@Param('id') id: string): PostResponseDto {
+  getPostById(@Param('id') id: string): ResponsePostDto {
     // 구현 내용
-    return {} as PostResponseDto;
+    return {} as ResponsePostDto;
   }
 
   @Put(':id')
@@ -103,14 +103,14 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: '수정된 게시글 정보',
-    type: PostResponseDto,
+    type: ResponsePostDto,
   })
   updatePost(
     @Param('id') id: string,
     @Body() updatePostDto: UpdatePostDto,
-  ): PostResponseDto {
+  ): ResponsePostDto {
     // 구현 내용
-    return {} as PostResponseDto;
+    return {} as ResponsePostDto;
   }
 
   @Delete(':id')
@@ -133,11 +133,11 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: '게시글 목록',
-    type: [PostResponseDto],
+    type: [ResponsePostDto],
   })
   getPostsByLocation(
     @Param('locationId') locationId: string,
-  ): PostResponseDto[] {
+  ): ResponsePostDto[] {
     // 구현 내용
     return [];
   }
@@ -151,9 +151,9 @@ export class PostController {
   @ApiResponse({
     status: 200,
     description: '게시글 목록',
-    type: [PostResponseDto],
+    type: [ResponsePostDto],
   })
-  getPostsByTag(@Param('tagName') tagName: string): PostResponseDto[] {
+  getPostsByTag(@Param('tagName') tagName: string): ResponsePostDto[] {
     // 구현 내용
     return [];
   }

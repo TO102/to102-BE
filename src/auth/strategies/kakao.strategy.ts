@@ -22,6 +22,7 @@ export class KakaoStrategy extends PassportStrategy(Strategy, 'kakao') {
     accessToken: string,
     refreshToken: string,
     profile: any,
+    // eslint-disable-next-line @typescript-eslint/ban-types
     done: Function,
   ): Promise<any> {
     const { id, username, emails, _json } = profile;

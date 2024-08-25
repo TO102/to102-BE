@@ -1,25 +1,26 @@
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable, Logger } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Injectable } from '@nestjs/common';
+import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  // controller에 요청이 왔을 때 constructor가 실행
-  constructor(private readonly configService: ConfigService) {
+  private readonly logger = new Logger(JwtStrategy.name);
+
+  constructor(private configService: ConfigService) {
     super({
-      // accessToken 위치
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        (request) => {
-          return request.cookies.accessToken;
-        },
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('JWT_SECRET'),
     });
   }
 
-  async validate(payload) {
-    return { userId: payload.userId };
+  async validate(payload: any) {
+    this.logger.log(`JWT payload 검증: ${JSON.stringify(payload)}`);
+    return {
+      userId: payload.sub,
+      oauthId: payload.oauthId,
+      nickname: payload.nickname,
+    };
   }
 }

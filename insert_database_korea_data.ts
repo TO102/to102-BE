@@ -10,9 +10,7 @@ const client = new Client({
   user: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
-  ssl: {
-    rejectUnauthorized: false
-  }
+  ssl: false,
 });
 
 const jsonFile = './Korean_administrative_districts.json';
@@ -40,12 +38,18 @@ async function insertData() {
           if (typeof district === 'string') {
             districts.add(district);
           } else if (typeof district === 'object') {
-            Object.keys(district).forEach(subDistrict => districts.add(subDistrict));
+            Object.keys(district).forEach((subDistrict) =>
+              districts.add(subDistrict),
+            );
           }
         }
-        
+
         for (const district of districts) {
-          const result = await client.query(insertQuery, [province, city, district]);
+          const result = await client.query(insertQuery, [
+            province,
+            city,
+            district,
+          ]);
           if (result.rowCount === 1) {
             insertedCount++;
           } else {
@@ -58,7 +62,6 @@ async function insertData() {
     console.log(`삽입된 데이터: ${insertedCount}`);
     console.log(`중복으로 건너뛴 데이터: ${skippedCount}`);
     console.log(`총 처리된 데이터: ${insertedCount + skippedCount}`);
-
   } catch (error) {
     console.error('데이터 삽입 중 오류가 발생했습니다.');
     if (error instanceof Error) {

@@ -17,13 +17,9 @@ export class User {
   userId: number;
 
   @ApiProperty({ description: '사용자 위치 정보', type: () => Location })
-  @OneToOne(() => Location, (location) => location.user)
+  @OneToOne(() => Location)
   @JoinColumn({ name: 'location_id' })
   location: Location;
-
-  @ApiProperty({ description: '위치 ID' })
-  @Column({ name: 'location_id', nullable: true })
-  locationId: number;
 
   @ApiProperty({ description: '사용자 이름', required: false })
   @Column({ nullable: true })
