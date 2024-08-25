@@ -55,4 +55,13 @@ export class Post {
   @Column({ type: 'jsonb', default: '[]' })
   @ApiProperty({ description: '게시글에 연결된 태그들' })
   postTags: string[];
+
+  @ApiProperty({ description: '만나는 날짜' })
+  @Column({
+    name: 'meeting_date',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP', // 기본값을 현재 시간으로 설정
+    nullable: false, // NOT NULL 제약 조건
+  })
+  meetingDate: Date;
 }

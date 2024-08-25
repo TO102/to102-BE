@@ -6,7 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Post } from '../entities/post.entity';
-import { CreatePostDto, LatestPostDto, ResponsePostDto } from './dto/post.dto';
+import { CreatePostDto, ResponsePostDto, UpdatePostDto } from './dto/post.dto';
 import { User } from 'src/entities/user.entity';
 import { Location } from '../entities/location.entity';
 import { AuthService } from 'src/auth/auth.service';
@@ -22,6 +22,22 @@ export class PostService {
     private locationRepository: Repository<Location>,
     private authService: AuthService,
   ) {}
+  private mapPostsToResponseDtos(posts: Post[]): ResponsePostDto[] {
+    return posts.map((post) => ({
+      postId: post.postId,
+      title: post.title,
+      content: post.content,
+      status: post.status,
+      thumbnail: post.thumbnail,
+      createdAt: post.createdAt,
+      updatedAt: post.updatedAt,
+      userId: post.user.userId,
+      province: post.province,
+      city: post.city,
+      postTags: post.postTags,
+      meetingDate: post.meetingDate,
+    }));
+  }
 
   async createPost(
     accessToken: string,
@@ -67,6 +83,7 @@ export class PostService {
       province,
       city,
       postTags,
+      meetingDate: new Date(createPostDto.meetingDate), // 날짜로 변환
     });
 
     // 게시글 저장
@@ -84,6 +101,144 @@ export class PostService {
       province: post.province,
       city: post.city,
       postTags: post.postTags,
+      meetingDate: post.meetingDate,
     };
+  }
+  private mapPostToResponseDto(post: Post): ResponsePostDto {
+    const { user, ...postData } = post;
+    return {
+      ...postData,
+      userId: user.userId,
+    };
+  }
+
+  async getAllPosts(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ posts: ResponsePostDto[]; total: number }> {
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await this.postRepository.findAndCount({
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: skip,
+    });
+
+    const responsePostDtos = this.mapPostsToResponseDtos(posts);
+
+    return { posts: responsePostDtos, total };
+  }
+
+  async getLatestSixPosts(): Promise<{
+    posts: ResponsePostDto[];
+    total: number;
+  }> {
+    return this.getAllPosts(1, 6);
+  }
+
+  async getPostById(id: number): Promise<ResponsePostDto> {
+    const post = await this.postRepository.findOne({
+      where: { postId: id },
+      relations: ['user'],
+    });
+
+    if (!post) {
+      throw new NotFoundException(`ID가 ${id}인 게시글을 찾을 수 없습니다.`);
+    }
+
+    return this.mapPostsToResponseDtos([post])[0];
+  }
+
+  async updatePost(
+    id: number,
+    updatePostDto: UpdatePostDto,
+  ): Promise<ResponsePostDto> {
+    const post = await this.postRepository.findOne({
+      where: { postId: id },
+      relations: ['user'],
+    });
+
+    if (!post) {
+      throw new NotFoundException(`ID가 ${id}인 게시글을 찾을 수 없습니다.`);
+    }
+
+    // 업데이트 가능한 필드만 명시적으로 나열
+    const fieldsToUpdate = [
+      'title',
+      'content',
+      'thumbnail',
+      'status',
+      'postTags',
+      'meetingDate',
+    ];
+
+    for (const field of fieldsToUpdate) {
+      if (updatePostDto[field] !== undefined) {
+        post[field] = updatePostDto[field];
+      }
+    }
+
+    await this.postRepository.save(post);
+    return this.mapPostToResponseDto(post);
+  }
+
+  async deletePost(id: number): Promise<void> {
+    const post = await this.postRepository.findOne({
+      where: { postId: id },
+    });
+
+    if (!post) {
+      throw new NotFoundException(`ID가 ${id}인 게시글을 찾을 수 없습니다.`);
+    }
+
+    await this.postRepository.remove(post);
+  }
+
+  async getPostsByCity(
+    city: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ posts: ResponsePostDto[]; total: number }> {
+    const skip = (page - 1) * limit;
+
+    const [posts, total] = await this.postRepository.findAndCount({
+      where: { city },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      take: limit,
+      skip: skip,
+    });
+
+    if (total === 0) {
+      throw new NotFoundException(
+        `해당 지역(${city})에 대한 게시글을 찾을 수 없습니다.`,
+      );
+    }
+    if (!posts || posts.length === 0) {
+      throw new NotFoundException(
+        `해당 지역(${city})에 대한 게시글을 찾을 수 없습니다.`,
+      );
+    }
+    const responsePostDtos = this.mapPostsToResponseDtos(posts);
+    return { posts: responsePostDtos, total };
+  }
+  async getPostsByTag(tagName: string): Promise<ResponsePostDto[]> {
+    const posts = await this.postRepository
+      .createQueryBuilder('post')
+      .leftJoinAndSelect('post.user', 'user')
+      .where('post."postTags"::jsonb @> :tagName', {
+        tagName: `["${tagName}"]`,
+      })
+      .orderBy('post.createdAt', 'DESC')
+      .getMany();
+
+    if (!posts || posts.length === 0) {
+      throw new NotFoundException(
+        `해당 태그(${tagName})가 포함된 게시글을 찾을 수 없습니다.`,
+      );
+    }
+
+    return this.mapPostsToResponseDtos(posts);
   }
 }

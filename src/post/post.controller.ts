@@ -7,8 +7,11 @@ import {
   Body,
   Param,
   Query,
-  Headers,
   UnauthorizedException,
+  DefaultValuePipe,
+  ParseIntPipe,
+  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -17,7 +20,7 @@ import {
   ApiParam,
   ApiQuery,
 } from '@nestjs/swagger';
-import { CreatePostDto, ResponsePostDto, LatestPostDto } from './dto/post.dto';
+import { CreatePostDto, ResponsePostDto, UpdatePostDto } from './dto/post.dto';
 import { PostService } from './post.service';
 
 @ApiTags('게시글')
@@ -63,19 +66,15 @@ export class PostController {
     return this.postService.getAllPosts(page, limit);
   }
 
-  @Get('latest')
-  @ApiOperation({
-    summary: '최신 게시글 조회',
-    description: '가장 최신의 게시글을 10개를 조회합니다.',
-  })
+  @Get('lastest')
+  @ApiOperation({ summary: '최신 게시글 조회' })
   @ApiResponse({
     status: 200,
-    description: '최신 게시글 목록',
-    type: [LatestPostDto],
+    description: '최신 게시글 목록 조회 성공',
+    type: [ResponsePostDto],
   })
-  getLatestPosts(): Promise<LatestPostDto[]> {
-    // 구현 내용
-    return this.postService.getLatestPosts();
+  async getLatestPosts() {
+    return this.postService.getLatestSixPosts();
   }
 
   @Get(':id')
@@ -89,9 +88,8 @@ export class PostController {
     description: '게시글 정보',
     type: ResponsePostDto,
   })
-  getPostById(@Param('id') id: string): ResponsePostDto {
-    // 구현 내용
-    return {} as ResponsePostDto;
+  async getPostById(@Param('id') id: number): Promise<ResponsePostDto> {
+    return this.postService.getPostById(id);
   }
 
   @Put(':id')
@@ -105,12 +103,21 @@ export class PostController {
     description: '수정된 게시글 정보',
     type: ResponsePostDto,
   })
-  updatePost(
-    @Param('id') id: string,
+  @ApiResponse({ status: 400, description: '잘못된 요청' })
+  @ApiResponse({ status: 404, description: '게시글을 찾을 수 없음' })
+  async updatePost(
+    @Param('id') id: number,
     @Body() updatePostDto: UpdatePostDto,
-  ): ResponsePostDto {
-    // 구현 내용
-    return {} as ResponsePostDto;
+  ): Promise<ResponsePostDto> {
+    try {
+      const updatedPost = await this.postService.updatePost(id, updatePostDto);
+      return updatedPost;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new BadRequestException('게시글 수정 중 오류가 발생했습니다.');
+    }
   }
 
   @Delete(':id')
@@ -120,26 +127,29 @@ export class PostController {
   })
   @ApiParam({ name: 'id', description: '게시글 ID' })
   @ApiResponse({ status: 204, description: '게시글 삭제 성공' })
-  deletePost(@Param('id') id: string): void {
-    // 구현 내용
+  async deletePost(@Param('id') id: number): Promise<void> {
+    await this.postService.deletePost(id);
   }
 
-  @Get('location/:locationId')
+  @Get('location/:city')
   @ApiOperation({
     summary: '특정 지역의 게시글 조회',
-    description: '지정된 위치 ID에 해당하는 게시글을 조회합니다.',
+    description: '지정된 위치(city, 시/군/구)에 해당하는 게시글을 조회합니다.',
   })
-  @ApiParam({ name: 'locationId', description: '위치 ID' })
+  @ApiParam({ name: 'city', description: '시/군/구 이름' })
+  @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
   @ApiResponse({
     status: 200,
-    description: '게시글 목록',
+    description: '게시글 목록 조회 성공',
     type: [ResponsePostDto],
   })
-  getPostsByLocation(
-    @Param('locationId') locationId: string,
-  ): ResponsePostDto[] {
-    // 구현 내용
-    return [];
+  async getPostsByLocation(
+    @Param('city') city: string,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe) limit: number,
+  ): Promise<{ posts: ResponsePostDto[]; total: number }> {
+    return this.postService.getPostsByCity(city, page, limit);
   }
 
   @Get('tag/:tagName')
@@ -150,11 +160,12 @@ export class PostController {
   @ApiParam({ name: 'tagName', description: '태그 이름' })
   @ApiResponse({
     status: 200,
-    description: '게시글 목록',
+    description: '게시글 목록 조회 성공',
     type: [ResponsePostDto],
   })
-  getPostsByTag(@Param('tagName') tagName: string): ResponsePostDto[] {
-    // 구현 내용
-    return [];
+  async getPostsByTag(
+    @Param('tagName') tagName: string,
+  ): Promise<ResponsePostDto[]> {
+    return this.postService.getPostsByTag(tagName);
   }
 }
