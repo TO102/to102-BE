@@ -14,6 +14,7 @@ import { Message } from './entities/message.entity';
 import { Friendship } from './entities/friendship.entity';
 import { Location } from './entities/location.entity';
 import { UsedAuthCode } from './entities/used-auth-code.entity';
+import { UserBlock } from './entities/user-block.entity';
 config();
 
 const configService = new ConfigService();
@@ -38,6 +39,7 @@ export const dataSourceOptions: DataSourceOptions = {
     Friendship,
     Location,
     UsedAuthCode,
+    UserBlock,
   ],
   migrations: [__dirname + '/migrations/*{.ts,.js}'],
   synchronize: configService.get('NODE_ENV') !== 'production',

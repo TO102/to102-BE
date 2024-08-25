@@ -16,6 +16,7 @@ import { TagModule } from './tag/tag.module';
 import { FriendshipModule } from './friendship/friendship.module';
 import { UserPreferenceModule } from './user-preference/user-preference.module';
 import { dataSourceOptions } from './data-source';
+import { BlockModule } from './user-block/user-block.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { dataSourceOptions } from './data-source';
     TagModule,
     FriendshipModule,
     UserPreferenceModule,
+    BlockModule,
   ],
   controllers: [AppController, LocationController],
   providers: [AppService],

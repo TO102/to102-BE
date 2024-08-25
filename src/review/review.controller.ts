@@ -1,58 +1,43 @@
-import { Controller, Get, Post, Body, Param } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
-import {
-  CreateReviewDto,
-  ReviewResponseDto,
-  AISummaryDto,
-} from './dto/review.dto';
+import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { ApiOperation, ApiResponse, ApiTags, ApiParam } from '@nestjs/swagger';
+import { ReviewService } from './review.service';
+import { CreateReviewDto, ReviewDto } from './dto/review.dto';
 
 @ApiTags('리뷰')
 @Controller('reviews')
 export class ReviewController {
+  constructor(private readonly reviewService: ReviewService) {}
+
   @Post()
   @ApiOperation({
-    summary: '새 리뷰 작성',
-    description: '새로운 리뷰를 작성합니다.',
+    summary: '리뷰 작성',
+    description: '특정 사용자에 대한 리뷰를 작성합니다.',
   })
   @ApiResponse({
     status: 201,
-    description: '리뷰 작성 성공',
-    type: ReviewResponseDto,
+    description: '리뷰가 성공적으로 작성되었습니다.',
+    type: ReviewDto, // 반환 타입을 ReviewDto로 변경
   })
-  createReview(@Body() createReviewDto: CreateReviewDto): ReviewResponseDto {
-    // 구현 내용
-    return {} as ReviewResponseDto;
+  async createReview(
+    @Body() createReviewDto: CreateReviewDto,
+  ): Promise<ReviewDto> {
+    // 반환 타입을 ReviewDto로 변경
+    return this.reviewService.createReview(createReviewDto);
   }
-
-  @Get('user/:userId')
+  @Get(':userId')
   @ApiOperation({
-    summary: '특정 사용자에 대한 리뷰 조회',
-    description: '지정된 사용자에 대한 모든 리뷰를 조회합니다.',
+    summary: '사용자에 대한 모든 리뷰 조회',
+    description: '특정 사용자에 대해 작성된 모든 리뷰를 조회합니다.',
   })
-  @ApiParam({ name: 'userId', description: '리뷰 대상 사용자 ID' })
+  @ApiParam({ name: 'userId', description: '리뷰 대상자의 사용자 ID' })
   @ApiResponse({
     status: 200,
     description: '리뷰 목록',
-    type: [ReviewResponseDto],
+    type: [ReviewDto], // 반환 타입을 ReviewDto 배열로 변경
   })
-  getUserReviews(@Param('userId') userId: string): ReviewResponseDto[] {
-    // 구현 내용
-    return [];
-  }
-
-  @Get('ai-summary/:userId')
-  @ApiOperation({
-    summary: '사용자의 AI 기반 한줄 평가',
-    description: 'AI가 생성한 사용자에 대한 한줄 평가를 조회합니다.',
-  })
-  @ApiParam({ name: 'userId', description: '평가 대상 사용자 ID' })
-  @ApiResponse({
-    status: 200,
-    description: 'AI 기반 평가 요약',
-    type: AISummaryDto,
-  })
-  getAISummary(@Param('userId') userId: string): AISummaryDto {
-    // 구현 내용
-    return {} as AISummaryDto;
+  async getReviewsForUser(
+    @Param('userId') userId: number,
+  ): Promise<ReviewDto[]> {
+    return this.reviewService.getReviewsForUser(userId);
   }
 }

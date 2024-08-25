@@ -1,48 +1,37 @@
-import { ApiProperty, PickType } from '@nestjs/swagger';
-
-export class Review {
-  @ApiProperty({ example: 1, description: '리뷰 고유 식별자' })
-  id: number;
-
-  @ApiProperty({ example: 1, description: '리뷰 작성자 ID' })
-  reviewerId: number;
-
-  @ApiProperty({ example: 2, description: '리뷰 대상 사용자 ID' })
-  revieweeId: number;
-
-  @ApiProperty({
-    example: 4.5,
-    description: '평점 (1~5)',
-    minimum: 1,
-    maximum: 5,
-  })
-  rating: number;
-
-  @ApiProperty({
-    example: '친절하고 시간 약속을 잘 지켜요!',
-    description: '리뷰 내용',
-  })
-  content: string;
-
-  @ApiProperty({
-    example: '2023-08-13T12:00:00Z',
-    description: '리뷰 작성 시간',
-  })
-  createdAt: Date;
-}
+import { PickType } from '@nestjs/swagger';
+import { Review } from '../../entities/review.entity';
+import { IsNumber } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateReviewDto extends PickType(Review, [
-  'revieweeId',
   'rating',
   'content',
-] as const) {}
+] as const) {
+  @ApiProperty({ description: '리뷰 작성자의 사용자 ID' })
+  @IsNumber()
+  reviewerId: number;
 
-export class ReviewResponseDto extends Review {}
+  @ApiProperty({ description: '리뷰 대상자의 사용자 ID' })
+  @IsNumber()
+  reviewedId: number;
+}
+export class ReviewDto {
+  @ApiProperty({ description: '리뷰 고유 식별자' })
+  review_id: number;
 
-export class AISummaryDto {
-  @ApiProperty({
-    example: '친절하고 신뢰할 수 있는 사용자입니다.',
-    description: 'AI가 생성한 사용자 평가 요약',
-  })
-  summary: string;
+  @ApiProperty({ description: '평점' })
+  rating: number;
+
+  @ApiProperty({ description: '리뷰 내용' })
+  content: string;
+
+  @ApiProperty({ description: '리뷰 작성 시간' })
+  created_at: Date;
+
+  @ApiProperty({ description: '리뷰 작성자 정보' })
+  reviewer: {
+    userId: number;
+    username: string;
+    profilePictureUrl: string;
+  };
 }

@@ -7,68 +7,81 @@ import {
   Body,
   Param,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import {
-  CreateFriendshipDto,
-  UpdateFriendshipDto,
-  FriendshipResponseDto,
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiParam,
+  ApiBody,
+} from '@nestjs/swagger';
+import {
   FriendBriefDto,
+  UpdateFriendshipStatusDto,
 } from './dto/friendship.dto';
+import { FriendshipService } from './friendship.service';
+import { Friendship } from 'src/entities/friendship.entity';
 
 @ApiTags('친구 관계')
 @Controller('friendships')
 export class FriendshipController {
-  @Post()
-  @ApiOperation({
-    summary: '친구 요청 보내기',
-    description: '새로운 친구 요청을 보냅니다.',
-  })
+  constructor(private readonly friendshipService: FriendshipService) {}
+
+  @Post(':user1Id/request/:user2Id')
+  @ApiOperation({ summary: '친구 요청 보내기' })
+  @ApiParam({ name: 'user1Id', description: '친구 요청을 보내는 사용자 ID' })
+  @ApiParam({ name: 'user2Id', description: '친구 요청을 받는 사용자 ID' })
   @ApiResponse({
     status: 201,
-    description: '친구 요청 생성 성공',
-    type: FriendshipResponseDto,
+    description: '친구 요청이 성공적으로 전송되었습니다.',
+    type: Friendship,
   })
-  createFriendship(
-    @Body() createFriendshipDto: CreateFriendshipDto,
-  ): FriendshipResponseDto {
-    // 구현 내용
-    return {} as FriendshipResponseDto;
+  async sendFriendRequest(
+    @Param('user1Id') user1Id: number,
+    @Param('user2Id') user2Id: number,
+  ): Promise<Friendship> {
+    return this.friendshipService.sendFriendRequest(user1Id, user2Id);
   }
 
-  @Put(':id')
-  @ApiOperation({
-    summary: '친구 요청 수락/거절',
-    description: '받은 친구 요청을 수락하거나 거절합니다.',
+  @Put(':user1Id/status/:user2Id')
+  @ApiOperation({ summary: '친구 상태 업데이트' })
+  @ApiParam({ name: 'user1Id', description: '상태를 변경하는 사용자 ID' })
+  @ApiParam({ name: 'user2Id', description: '상대방 사용자 ID' })
+  @ApiBody({
+    description: '업데이트할 친구 상태 정보',
+    type: UpdateFriendshipStatusDto,
   })
-  @ApiParam({ name: 'id', description: '친구 관계 ID' })
   @ApiResponse({
     status: 200,
-    description: '친구 요청 응답 성공',
-    type: FriendshipResponseDto,
+    description: '친구 상태가 성공적으로 업데이트되었습니다.',
+    type: Friendship,
   })
-  updateFriendship(
-    @Param('id') id: string,
-    @Body() updateFriendshipDto: UpdateFriendshipDto,
-  ): FriendshipResponseDto {
-    // 구현 내용
-    return {} as FriendshipResponseDto;
+  async updateFriendshipStatus(
+    @Param('user1Id') user1Id: number,
+    @Param('user2Id') user2Id: number,
+    @Body() updateFriendshipStatusDto: UpdateFriendshipStatusDto,
+  ): Promise<Friendship> {
+    return this.friendshipService.updateFriendshipStatus(
+      user1Id,
+      user2Id,
+      updateFriendshipStatusDto.status,
+    );
   }
-
-  @Get()
+  @Get(':userId')
   @ApiOperation({
     summary: '사용자의 모든 친구 관계 조회',
     description: '현재 사용자의 모든 친구 관계를 조회합니다.',
   })
+  @ApiParam({ name: 'userId', required: true, description: '사용자 ID' })
   @ApiResponse({
     status: 200,
     description: '친구 목록',
     type: [FriendBriefDto],
   })
-  getAllFriendships(): FriendBriefDto[] {
-    // 구현 내용
-    return [];
+  async getMutualFriendById(
+    @Param('userId') userId: number,
+  ): Promise<FriendBriefDto[]> {
+    return this.friendshipService.getMutualFriendById(userId);
   }
-
   @Delete(':id')
   @ApiOperation({
     summary: '친구 관계 삭제',
@@ -76,7 +89,7 @@ export class FriendshipController {
   })
   @ApiParam({ name: 'id', description: '친구 관계 ID' })
   @ApiResponse({ status: 204, description: '친구 관계 삭제 성공' })
-  deleteFriendship(@Param('id') id: string): void {
-    // 구현 내용
+  async deleteFriendship(@Param('id') id: number) {
+    await this.friendshipService.deleteFriendship(id);
   }
 }
